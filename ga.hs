@@ -1,5 +1,6 @@
 import Control.Monad.Trans.State
 import System.Random
+import Control.Applicative hiding (Const,)
 
 data Variable = X | Y deriving (Show, Enum)
 data Operation = Mult | Div | Add | Sub deriving (Show, Enum)
@@ -70,7 +71,6 @@ eval (Op Mult left right) x y = (*) (eval left x y) (eval right x y)
 eval (Op Add left right) x y = (+) (eval left x y) (eval right x y)
 
 
-
 -- pick subree 
 pickSubtree :: Zipper -> State StdGen (Maybe Zipper)
 pickSubtree x = do
@@ -79,7 +79,6 @@ pickSubtree x = do
                   put gen2
                   case ([goLeft, goRight]!!pick) x of Just t -> pickSubtree t 
                                                       Nothing -> return Nothing
-
 
 -- gotta refactor this whole thing, look into monad transformers
 mutateTreeZipper :: Zipper -> State StdGen (Maybe Zipper)
@@ -95,13 +94,15 @@ mutateTreeZipper x = do
                                return $ Just $ modifySubTree newTree x                   
                          else return Nothing
 
+
 treetreeBangBang :: Maybe Zipper -> Maybe Zipper -> Maybe Zipper
 treetreeBangBang (Just x) (Just (y,ys)) = Just $ modifySubTree y x
 treetreeBangBang _ _ = Nothing
 
 
---generateExprPopulation :: Int -> Int -> state StdGen [Expr]
---generateExprPopulation size depth = let pop = map (\_ -> constructRandomTree depth ) [1..size]
---                                    in sequence_ pop
+-- convert to point free once I understand the point free version of this
+-- gotta investigate the monad transfomer signature
+generateExprPopulation :: Int -> Int -> StateT StdGen Data.Functor.Identity.Identity [Expr]
+generateExprPopulation size depth = sequenceA $ replicate size $ constructRandomTree depth 
                               
 
