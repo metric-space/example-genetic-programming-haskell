@@ -75,10 +75,15 @@ eval (Op Add left right) x y = (+) (eval left x y) (eval right x y)
 pickSubtree :: Zipper -> State StdGen (Maybe Zipper)
 pickSubtree x = do
                   gen <- get
-                  let (pick, gen2) = randomR (0,1) gen :: (Int, StdGen)
-                  put gen2
-                  case ([goLeft, goRight]!!pick) x of Just t -> pickSubtree t 
-                                                      Nothing -> return Nothing
+                  let (choose, gen1) = randomR (0,1) gen :: (Float,StdGen)
+                  put gen1
+                  if (choose > 0.60)
+                    then return $ Just x
+                    else do
+                           let (pick, gen2) = randomR (0,1) gen :: (Int, StdGen)
+                           put gen2
+                           case ([goLeft, goRight]!!pick) x of Just t -> pickSubtree t 
+                                                               Nothing -> return Nothing
 
 -- gotta refactor this whole thing, look into monad transformers
 mutateTreeZipper :: Zipper -> State StdGen (Maybe Zipper)
@@ -101,8 +106,16 @@ treetreeBangBang _ _ = Nothing
 
 
 -- convert to point free once I understand the point free version of this
--- gotta investigate the monad transfomer signature
-generateExprPopulation :: Int -> Int -> StateT StdGen Data.Functor.Identity.Identity [Expr]
-generateExprPopulation size depth = sequenceA $ replicate size $ constructRandomTree depth 
+generateExprPopulation :: Int -> Int -> State StdGen [Expr]
+generateExprPopulation size depth = mapM constructRandomTree $ replicate size depth
                               
+generateExprZipper :: Int -> Int -> State StdGen [Zipper]
+generateExprZipper size depth = map (\x -> (x,[])) <$> generateExprPopulation size depth 
 
+myShittyConnector :: Maybe Zipper -> State StdGen (Maybe Zipper)
+myShittyConnector (Just x) = mutateTreeZipper x
+myShittyConnector _ = return Nothing
+
+a = evalState ((generateExprZipper 300 4) 
+                 >>= mapM pickSubtree  
+                 >>= mapM myShittyConnector) (mkStdGen 34000088526)
