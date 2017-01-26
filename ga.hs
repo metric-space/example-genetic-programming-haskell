@@ -1,6 +1,14 @@
 import Control.Monad.Trans.State
 import System.Random
 import Control.Applicative hiding (Const,)
+import Data.List (splitAt, sortBy)
+import Data.Ord (comparing,)
+
+hiddenFunction :: Float -> Float -> Float
+hiddenFunction x y = x**2+2*y+3*x+5
+
+euclideanMetric :: (Float, Float, Float) -> (Float, Float, Float) -> Float
+euclideanMetric (a1,b1,c1) (a2,b2,c2) =  (a2-a1)**2 + (b2-b1)**2 + (c2-c1)**2  
 
 data Variable = X | Y deriving (Show, Enum)
 data Operation = Mult | Div | Add | Sub deriving (Show, Enum)
@@ -25,7 +33,7 @@ goRight (Const _, _) = Nothing
 
 goTop :: Zipper -> Maybe Zipper
 goTop (t, (LeftCrumb f r):bs) = Just (Op f t r, bs)
-goTop (t, (RightCrumb f l):bs) = Just (Op f l t, bs )
+goTop (t, (RightCrumb f l):bs) = Just (Op f l t, bs)
 goTop (_, []) = Nothing
 
 modifySubTree :: Expr -> Zipper -> Zipper
@@ -34,6 +42,7 @@ modifySubTree a (_, bs) = (a, bs)
 upMost :: Zipper -> Maybe Expr
 upMost (t, []) = Just t
 upMost x = goTop x >>= upMost
+
 
 -- LYAH 
 
@@ -100,9 +109,8 @@ mutateTreeZipper x = do
                          else return Nothing
 
 
-treetreeBangBang :: Maybe Zipper -> Maybe Zipper -> Maybe Zipper
-treetreeBangBang (Just x) (Just (y,ys)) = Just $ modifySubTree y x
-treetreeBangBang _ _ = Nothing
+treetreeBangBang :: [Zipper] -> Zipper
+treetreeBangBang [x, (y,ys)] = modifySubTree y x
 
 
 -- convert to point free once I understand the point free version of this
@@ -116,6 +124,17 @@ myShittyConnector :: Maybe Zipper -> State StdGen (Maybe Zipper)
 myShittyConnector (Just x) = mutateTreeZipper x
 myShittyConnector _ = return Nothing
 
+evaluateAgainstHiddenFunction :: [Expr] -> State StdGen [Expr]
+evaluateAgainstHiddenFunction t = do
+                                    gen <- get                                  
+                                    let (g1, g2) = System.Random.split gen
+                                    put g2
+                                    let [x,y] = take 2 $ randoms g1 :: [Float]
+                                    let euclid = \a z -> euclideanMetric (x,y,a) (x,y,z)
+                                    let fitness = map (\tree -> (tree, euclid (eval tree x y) (hiddenFunction x y))) t
+                                    return $ map fst $ sortBy (comparing snd) fitness
+                                             
+                                     
 a = evalState ((generateExprZipper 300 4) 
                  >>= mapM pickSubtree  
                  >>= mapM myShittyConnector) (mkStdGen 34000088526)
