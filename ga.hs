@@ -117,8 +117,8 @@ treetreeBangBang [x, (y,ys)] = modifySubTree y x
 generateExprPopulation :: Int -> Int -> State StdGen [Expr]
 generateExprPopulation size depth = mapM constructRandomTree $ replicate size depth
                               
-generateExprZipper :: Int -> Int -> State StdGen [Zipper]
-generateExprZipper size depth = map (\x -> (x,[])) <$> generateExprPopulation size depth 
+generateExprZipper :: Expr -> State StdGen Zipper
+generateExprZipper tree = return (tree,[])  
 
 myShittyConnector :: Maybe Zipper -> State StdGen (Maybe Zipper)
 myShittyConnector (Just x) = mutateTreeZipper x
@@ -134,7 +134,8 @@ evaluateAgainstHiddenFunction t = do
                                     let fitness = map (\tree -> (tree, euclid (eval tree x y) (hiddenFunction x y))) t
                                     return $ map fst $ sortBy (comparing snd) fitness
                                              
-                                     
-a = evalState ((generateExprZipper 300 4) 
-                 >>= mapM pickSubtree  
+a = evalState ((generateExprPopulation 300 4) 
+                 >>= evaluateAgainstHiddenFunction
+                 >>= mapM generateExprZipper
+                 >>= mapM pickSubtree 
                  >>= mapM myShittyConnector) (mkStdGen 34000088526)
