@@ -2,6 +2,7 @@ import Control.Monad.Trans.State
 import System.Random
 import Control.Applicative hiding (Const,)
 import Data.List (splitAt, sortBy)
+import Data.List.Split (chunksOf,)
 import Data.Ord (comparing,)
 
 hiddenFunction :: Float -> Float -> Float
@@ -132,10 +133,12 @@ evaluateAgainstHiddenFunction t = do
                                     let [x,y] = take 2 $ randoms g1 :: [Float]
                                     let euclid = \a z -> euclideanMetric (x,y,a) (x,y,z)
                                     let fitness = map (\tree -> (tree, euclid (eval tree x y) (hiddenFunction x y))) t
-                                    return $ map fst $ sortBy (comparing snd) fitness
+                                    return $ take 30 $ map fst $ sortBy (comparing snd) fitness
                                              
 a = evalState ((generateExprPopulation 300 4) 
                  >>= evaluateAgainstHiddenFunction
                  >>= mapM generateExprZipper
                  >>= mapM pickSubtree 
-                 >>= mapM myShittyConnector) (mkStdGen 34000088526)
+                 >>= (\x -> return $ chunksOf 2 x)
+                 >>= (\x -> return $ map (\y -> fmap  treetreeBangBang (sequence y)) x)
+                 >>= mapM myShittyConnector) (mkStdGen 340088526)
