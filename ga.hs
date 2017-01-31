@@ -4,6 +4,8 @@ import Control.Applicative hiding (Const,)
 import Data.List (splitAt, sortBy)
 import Data.List.Split (chunksOf,)
 import Data.Ord (comparing,)
+import Control.Monad (filterM,)
+import Data.Maybe (fromJust, isJust)
 
 hiddenFunction :: Float -> Float -> Float
 hiddenFunction x y = x**2+2*y+3*x+5
@@ -11,12 +13,12 @@ hiddenFunction x y = x**2+2*y+3*x+5
 euclideanMetric :: (Float, Float, Float) -> (Float, Float, Float) -> Float
 euclideanMetric (a1,b1,c1) (a2,b2,c2) =  (a2-a1)**2 + (b2-b1)**2 + (c2-c1)**2  
 
-data Variable = X | Y deriving (Show, Enum)
-data Operation = Mult | Div | Add | Sub deriving (Show, Enum)
+data Variable = X | Y deriving (Show, Enum, Eq)
+data Operation = Mult | Div | Add | Sub deriving (Show, Enum, Eq)
 
 data Expr = Value Variable 
         | Const Float
-        | Op Operation Expr Expr deriving (Show)
+        | Op Operation Expr Expr deriving (Show, Eq)
 
 -- taken from LYAH
 data Crumb = LeftCrumb Operation Expr | RightCrumb Operation Expr deriving (Show)
@@ -133,12 +135,21 @@ evaluateAgainstHiddenFunction t = do
                                     let [x,y] = take 2 $ randoms g1 :: [Float]
                                     let euclid = \a z -> euclideanMetric (x,y,a) (x,y,z)
                                     let fitness = map (\tree -> (tree, euclid (eval tree x y) (hiddenFunction x y))) t
-                                    return $ take 30 $ map fst $ sortBy (comparing snd) fitness
-                                             
-a = evalState ((generateExprPopulation 300 4) 
-                 >>= evaluateAgainstHiddenFunction
+                                    return $ map fst $ sortBy (comparing snd) fitness
+
+upMostMaybe :: Maybe Zipper -> Maybe Expr
+upMostMaybe (Just x) = upMost x 
+upMostMaybe _ = Nothing
+
+gaMachine ::  [Expr] -> State StdGen [Expr]
+gaMachine  z =  evaluateAgainstHiddenFunction z
                  >>= mapM generateExprZipper
                  >>= mapM pickSubtree 
                  >>= (\x -> return $ chunksOf 2 x)
+                 >>= (\x -> return $ concat $ map (\a -> [a,reverse a]) x)
                  >>= (\x -> return $ map (\y -> fmap  treetreeBangBang (sequence y)) x)
-                 >>= mapM myShittyConnector) (mkStdGen 340088526)
+                 >>= mapM myShittyConnector
+                 >>= mapM (\x -> return $ upMostMaybe x)
+                 >>= (\x -> return $ map fromJust $ filter isJust x)
+                                             
+a = evalState ((generateExprPopulation 700 4) >>= gaMachine >>= gaMachine >>= gaMachine >>= gaMachine) (mkStdGen 38526)
