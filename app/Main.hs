@@ -1,5 +1,6 @@
 module Main (P(..), Aop(..), STree(..), main) where
 
+import Control.Monad (foldM)
 import Data.Map.Strict ((!), Map, fromList)
 import Data.List (sortOn)
 import System.Random
@@ -145,34 +146,45 @@ crossTrees env t1 t2 = cross (True, env) t1 t2
 
 -- ====================   Utils ===================================================================  
 
-selectIndex :: Double -> IO Double
-selectIndex = undefined
+selectIndex :: Double -> IO Int
+selectIndex pexp = randomIO >>= (return . round . flip (/) (log pexp) . log)
 
 -- ===================== main prog ==============================================================
 
 
-genPop :: ENV -> [STree] -> IO (Int,[STree])
-genPop env start =  if (length start == (populationSixe env)) 
-                        then return ()
-                     p <- randomIO 
-                     <- 
+genPop :: ([(Map P Int, Int)],ENV) -> [STree] -> [(Int,STree)] -> IO [(Int,STree)]
+genPop (mx,env) start prevpop = if (length start == (populationSize env))  
+                                  then return . (sortOn fst) . map (\x -> (evaluateFitness x mx,x)) $ start
+                                  else do 
+                                         p <- randomIO 
+                                         n <- (if p > (pnew env) 
+                                                  then do 
+                                                        let pe = pexp env
+                                                        t1 <- (snd . (prevpop !!)) <$> (selectIndex pe)
+                                                        t2 <- (snd . (prevpop !!)) <$> (selectIndex pe) 
+                                                        (crossTrees env t1 t2) >>= flip mutate env
+                                                  else  randomSTree (treeParams env))
+                                         genPop (mx,env) (start++[n]) prevpop
+                                         
+                        
 
-
-circleOfLife :: ENV -> ([(Int,STree)], Bool) -> Int -> IO ((Int,[STree]), Bool)
-circleOfLife env acc@(((s1,t1):(s2,t2):xs),stop) _ =
+circleOfLife :: ([(Map P Int, Int)],ENV) -> ([(Int,STree)], Bool) -> Int -> IO ([(Int,STree)], Bool)
+circleOfLife env acc@(ppop@((s1,t1):(s2,t2):xs),stop) _ 
   | stop = return acc
-  | (s1 == 0) = return . (fmap True) $ acc
-  | otherwise = (genPop env [t1,t2]) >>= return . (flip (,) False)
-
+  | (s1 == 0) = return ((const True) <$> acc)
+  | otherwise = (genPop env [t1,t2] ppop) >>= return . (flip (,) False)
 
 
 evolve :: ENV -> IO ()
 evolve env
        = do
-           population <- traverse (const . randomSTree $ env) [0 .. (popSize env)]
+           population <- traverse (const . randomSTree $ (treeParams env)) [0 .. (populationSize env)]
            metricSet <- buildHiddenSet
-           let rpopulation =  (sortOn fst) . map (\x -> (evaluateFitness x metricSet,x)) $  population
-           (result ,_) <-  foldM (circleOfLife env) (rpopulation, False) [0 .. (maxGen env)]
+           let rpopulation =  (sortOn fst) . map (\x -> (evaluateFitness x metricSet,x)) $  population :: [(Int, STree)]
+           (result ,_) <-  foldM (circleOfLife (metricSet,env)) (rpopulation, False) [0 .. (maxGen env)]
+           let winner = head result
+           putStrLn $  "Score is " ++ (show . fst $ winner)
+           putStrLn . show . snd $ winner
 
 
 main :: IO ()
