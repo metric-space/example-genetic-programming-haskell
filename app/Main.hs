@@ -5,13 +5,25 @@ import System.Random
 
 import Lib
 
+-- ======================    The problem  ===================================================
 
 hiddenFunction :: Int -> Int -> Int
 hiddenFunction x y = x*x + 2*y + 3*x + 5 
 
 
+-- ======================    the ENVIRONMENT    =============================================
+
 data STreeENV = STreeENV { maxDepth :: Int , fpr :: Double, ppr :: Double }
 
+data ENV = ENV { mutationRate :: Double , crossRate :: Double,  
+                population :: Int, maxGen :: Int,
+                pexp :: Double, pnew :: Double, treeParams :: STreeENV}
+
+
+defaultENV :: ENV
+defaultENV = ENV 0.1 0.4 500 500 0.7 0.05 (STreeENV 4 0.5 0.6)
+
+-- =====================  TREE DATATYPES =================================================
 -- Arithmetic operators
 data Aop = MULT | ADD | SUB deriving (Eq, Enum)
 
@@ -50,6 +62,7 @@ evalSTree (Arithmetic op o1 o2) m = case op of MULT -> (evalSTree o1 m) * (evalS
 
 -- =======================   TREE BUILDING =============================================
 
+
 randomParameter :: IO P
 randomParameter = randomRIO (0,1) >>= return . toEnum
 
@@ -76,6 +89,7 @@ randomSTree env = randomIO >>= (flip randomBranch env)
 
 -- ====================== FITNESS ======================================================
 
+
 buildSingleSet :: IO (Map P Int, Int)
 buildSingleSet = do
                   x <- randomRIO (0,40)
@@ -92,6 +106,42 @@ evaluateFitness :: STree -> [(Map P Int,Int)] -> Int
 evaluateFitness tree lm = foldl1 (+) . map (\(m,value) -> abs . (-) value . evalSTree tree $ m) $ lm
                   
 
+-- ======================= Genetic operators ===============================================
+
+mutateTree :: STree -> ENV ->  IO STree
+mutateTree (Arithmetic x b1 b2) env = (Arithmetic x) <$> (mutate b1 env)  <*> (mutate b2 env)
+mutateTree x _ = return x
+
+
+mutate :: STree -> ENV -> IO STree
+mutate tree env = do
+                    iprob <- randomIO
+                    if iprob > (mutationRate env)
+                       then (mutateTree tree env)
+                       else (randomSTree . treeParams $ env)
+
+
+
+across :: ENV -> STree -> STree ->  IO STree
+across env (Arithmetic a1 ta1 ta2) (Arithmetic _ tb1 tb2) 
+       = do
+            tb1_ <- fmap ([tb1, tb2]!!) $ randomRIO (0,1)
+            tb2_ <- fmap ([tb1, tb2]!!) $ randomRIO (0,1)
+            Arithmetic a1 <$> (cross (False, env) ta1 tb1_) <*> (cross (False, env) ta2 tb2_)
+across _ t1 _ = return t1
+
+
+cross :: (Bool, ENV) -> STree -> STree -> IO STree
+cross (top, env) t1 t2 = do
+                           prob <- randomIO 
+                           if (not top) && prob < (crossRate env)
+                              then return t2
+                              else (across env t1 t2)
+
+
+crossTrees :: ENV -> STree -> STree -> IO STree
+crossTrees env t1 t2 = cross (True, env) t1 t2
+
 
 main :: IO ()
-main = someFunc
+main = putStrLn "hello"
