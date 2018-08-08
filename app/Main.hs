@@ -1,6 +1,7 @@
 module Main (P(..), Aop(..), STree(..), main) where
 
 import Data.Map.Strict ((!), Map, fromList)
+import Data.List (sortOn)
 import System.Random
 
 import Lib
@@ -15,8 +16,8 @@ hiddenFunction x y = x*x + 2*y + 3*x + 5
 
 data STreeENV = STreeENV { maxDepth :: Int , fpr :: Double, ppr :: Double }
 
-data ENV = ENV { mutationRate :: Double , crossRate :: Double,  
-                population :: Int, maxGen :: Int,
+data ENV = ENV {mutationRate :: Double , crossRate :: Double,  
+                populationSize :: Int, maxGen :: Int,
                 pexp :: Double, pnew :: Double, treeParams :: STreeENV}
 
 
@@ -141,6 +142,37 @@ cross (top, env) t1 t2 = do
 
 crossTrees :: ENV -> STree -> STree -> IO STree
 crossTrees env t1 t2 = cross (True, env) t1 t2
+
+-- ====================   Utils ===================================================================  
+
+selectIndex :: Double -> IO Double
+selectIndex = undefined
+
+-- ===================== main prog ==============================================================
+
+
+genPop :: ENV -> [STree] -> IO (Int,[STree])
+genPop env start =  if (length start == (populationSixe env)) 
+                        then return ()
+                     p <- randomIO 
+                     <- 
+
+
+circleOfLife :: ENV -> ([(Int,STree)], Bool) -> Int -> IO ((Int,[STree]), Bool)
+circleOfLife env acc@(((s1,t1):(s2,t2):xs),stop) _ =
+  | stop = return acc
+  | (s1 == 0) = return . (fmap True) $ acc
+  | otherwise = (genPop env [t1,t2]) >>= return . (flip (,) False)
+
+
+
+evolve :: ENV -> IO ()
+evolve env
+       = do
+           population <- traverse (const . randomSTree $ env) [0 .. (popSize env)]
+           metricSet <- buildHiddenSet
+           let rpopulation =  (sortOn fst) . map (\x -> (evaluateFitness x metricSet,x)) $  population
+           (result ,_) <-  foldM (circleOfLife env) (rpopulation, False) [0 .. (maxGen env)]
 
 
 main :: IO ()
