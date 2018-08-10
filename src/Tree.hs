@@ -26,7 +26,7 @@ randomParameter = toEnum <$> randomRIO (0, 1)
 randomAop :: IO Aop
 randomAop = toEnum <$> randomRIO (0, 2)
 
-randomBranch :: Double -> STreeENV -> IO STree
+randomBranch :: Float -> STreeENV -> IO STree
 randomBranch r env@(STreeENV maxdepth fpr ppr)
   | (r < fpr) && maxdepth > 0 = do
     a <- randomAop

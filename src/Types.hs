@@ -10,17 +10,17 @@ module Types
 -- ======================    the ENVIRONMENT    =============================================
 data STreeENV = STreeENV
   { maxDepth :: Int
-  , fpr :: Double
-  , ppr :: Double
+  , fpr :: Float
+  , ppr :: Float
   }
 
 data ENV = ENV
-  { mutationRate :: Double
-  , crossRate :: Double
+  { mutationRate :: Float
+  , crossRate :: Float
   , populationSize :: Int
   , maxGen :: Int
-  , pexp :: Double
-  , pnew :: Double
+  , pexp :: Float
+  , pnew :: Float
   , treeParams :: STreeENV
   , evalFunction :: EvalFunc
   }

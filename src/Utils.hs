@@ -7,7 +7,7 @@ import System.Random (randomIO)
 
 import Types (ENV(..), STreeENV(..))
 
-selectIndex :: Double -> IO Int
+selectIndex :: Float -> IO Int
 selectIndex pexp = (round . flip (/) (log pexp) . log) <$> randomIO
 
 defaultENV :: ENV
