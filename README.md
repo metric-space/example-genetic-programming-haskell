@@ -11,4 +11,4 @@ Do buy the book, it is a wonderful book.
 
 ## Future Improvements
 1. Refactor Evolve.hs
-2. General refactoring
+2. Speedup implmentation by using vectors instead of lists and optimizing things in general
